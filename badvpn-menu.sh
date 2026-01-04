@@ -9,14 +9,32 @@ pause() {
 
 banner() {
   clear
+  GREEN="\e[32m"
+  RED="\e[31m"
+  NC="\e[0m"
+
+  PORT_LIST="7300 3478 10000"
+  ACTIVE_PORTS=""
+
+  for p in $PORT_LIST; do
+    if ss -lun | awk '{print $5}' | grep -q ":$p$"; then
+      ACTIVE_PORTS="$ACTIVE_PORTS $p"
+    fi
+  done
   echo "======================================="
   echo "            BadVPN Manager             "
+  echo "======================================="
+  if [ -n "$ACTIVE_PORTS" ]; then
+    echo -e " Status: ${GREEN}ATIVO${NC} | Portas:${GREEN}$ACTIVE_PORTS${NC}"
+  else
+    echo -e " Status: ${RED}PARADO${NC}"
+  fi
   echo "======================================="
 }
 
 install_badvpn() {
   banner
-  sudo bash "$BASE/easyinstall" >/dev/null 2>&1
+  bash <(curl -sL https://raw.githubusercontent.com/yzeusy/BadVPN/refs/heads/main/easyinstall) >/dev/null 2>&1
   echo "✅ BadVPN instalado com sucesso!"
   pause
 }
@@ -61,7 +79,7 @@ remove_optimizations() {
   pause
 }
 
-  uninstall_badvpn() {
+uninstall_badvpn() {
   banner
   read -p "Tem certeza que deseja REMOVER COMPLETAMENTE o BadVPN? (s/n): " yn
 
