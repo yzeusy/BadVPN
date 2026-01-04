@@ -77,22 +77,151 @@ restart_badvpn() {
   pause
 }
 
+is_multiport() {
+  [[ -f /etc/systemd/system/badvpn@.service ]]
+}
+
 optimize_badvpn() {
   banner
-  sudo bash "$BASE/badvpn-auto-optimize.sh" >/dev/null 2>&1
-  echo "⚡ BadVPN otimizado com sucesso!"
+  echo "⚡ Aplicando otimizações no BadVPN..."
+  sleep 1
+
+  echo "📦 Ajustando sysctl..."
+  cat > /etc/sysctl.d/99-badvpn.conf <<'EOF'
+net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+net.core.netdev_max_backlog = 50000
+net.ipv4.udp_mem = 65536 131072 262144
+EOF
+
+  sysctl --system >/dev/null 2>&1
+
+  if is_multiport; then
+    echo "🔀 Modo MULTI-PORTAS detectado"
+
+    cat > /etc/systemd/system/badvpn@.service <<'EOF'
+[Unit]
+Description=BadVPN UDPGW (%i)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/badvpn-udpgw \
+--listen-addr 0.0.0.0:%i \
+--max-clients 1000 \
+--buffer-size 32768
+
+Restart=always
+RestartSec=3
+KillMode=process
+User=root
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl restart badvpn
+
+  else
+    echo "🔹 Modo PORTA ÚNICA detectado"
+
+    cat > /etc/systemd/system/badvpn.service <<'EOF'
+[Unit]
+Description=BadVPN UDPGW Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/badvpn-udpgw \
+--listen-addr 0.0.0.0:7300 \
+--max-clients 1000 \
+--buffer-size 32768
+
+Restart=always
+RestartSec=3
+KillMode=process
+User=root
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl restart badvpn
+  fi
+
+  echo "✅ Otimização aplicada com sucesso"
   pause
 }
 
+
 remove_optimizations() {
   banner
-  sudo rm -f /etc/sysctl.d/99-badvpn.conf
-  sudo rm -rf /etc/systemd/system/badvpn.service.d
-  sudo sed -i 's/--tun-mtu [0-9]\+//g' /etc/systemd/system/badvpn.service
-  sudo sed -i 's/--buffer-size [0-9]\+//g' /etc/systemd/system/badvpn.service
-  sudo systemctl daemon-reload
-  sudo systemctl restart badvpn >/dev/null 2>&1
-  echo "🧹 Otimizações removidas"
+  echo "🧹 Removendo otimizações do BadVPN..."
+  sleep 1
+
+  rm -f /etc/sysctl.d/99-badvpn.conf
+  sysctl --system >/dev/null 2>&1
+
+  if is_multiport; then
+    echo "🔀 Multi-portas detectado — limpando template"
+
+    cat > /etc/systemd/system/badvpn@.service <<'EOF'
+[Unit]
+Description=BadVPN UDPGW (%i)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/badvpn-udpgw \
+--listen-addr 0.0.0.0:%i \
+--max-clients 1000
+
+Restart=always
+RestartSec=3
+KillMode=process
+User=root
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl restart badvpn
+
+  else
+    echo "🔹 Porta única detectada — limpando service"
+
+    cat > /etc/systemd/system/badvpn.service <<'EOF'
+[Unit]
+Description=BadVPN UDPGW Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/badvpn-udpgw \
+--listen-addr 0.0.0.0:7300 \
+--max-clients 1000
+
+Restart=always
+RestartSec=3
+KillMode=process
+User=root
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl restart badvpn
+  fi
+
+  echo "✅ Otimizações removidas com sucesso"
   pause
 }
 
@@ -143,6 +272,181 @@ uninstall_badvpn() {
   pause
 }
 
+setup_multiport() {
+  banner
+  echo "🔧 Configurando BadVPN em modo MULTI-PORTA..."
+  sleep 1
+
+  echo "🔍 Verificando se porta 7300 está ativa..."
+  if ss -lun | grep -q ':7300'; then
+    echo "⚠️ Porta 7300 em uso — limpando modo simples..."
+
+    systemctl stop badvpn >/dev/null 2>&1 || true
+    systemctl disable badvpn >/dev/null 2>&1 || true
+    rm -f /etc/systemd/system/badvpn.service
+
+    pkill -9 badvpn-udpgw >/dev/null 2>&1 || true
+  fi
+
+  echo "🧹 Limpando serviços antigos..."
+  systemctl stop badvpn@* >/dev/null 2>&1 || true
+  systemctl disable badvpn@* >/dev/null 2>&1 || true
+  rm -f /etc/systemd/system/badvpn@.service
+
+  systemctl daemon-reload
+  systemctl daemon-reexec
+
+  echo "🧱 Criando service template..."
+
+  cat > /etc/systemd/system/badvpn@.service <<'EOF'
+[Unit]
+Description=BadVPN UDPGW (%i)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/badvpn-udpgw \
+--listen-addr 0.0.0.0:%i \
+--max-clients 1000
+
+Restart=always
+RestartSec=3
+KillMode=process
+User=root
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  echo "🧱 Criando service pai..."
+
+  cat > /etc/systemd/system/badvpn.service <<'EOF'
+[Unit]
+Description=BadVPN UDPGW (Multi-Port)
+After=network.target
+Requires=badvpn@7300.service badvpn@3478.service badvpn@10000.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/true
+ExecStop=/bin/true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  systemctl daemon-reload
+
+  echo "🚀 Ativando portas 7300 / 3478 / 10000..."
+  systemctl enable badvpn@7300 badvpn@3478 badvpn@10000 >/dev/null 2>&1
+  systemctl enable badvpn >/dev/null 2>&1
+
+  systemctl start badvpn
+
+  echo ""
+  echo "✅ BadVPN MULTI-PORTA ativo com sucesso!"
+  echo "➡️ Portas: 7300 3478 10000"
+  pause
+}
+
+remove_multiport() {
+  banner
+  read -p "Remover MULTI-PORTAS e voltar para porta única (7300)? (s/n): " yn
+
+  if [[ ! "$yn" =~ ^[Ss]$ ]]; then
+    echo "❌ Operação cancelada"
+    pause
+    return
+  fi
+
+  echo "🛑 Parando serviços multi-porta..."
+  systemctl stop badvpn >/dev/null 2>&1 || true
+  systemctl stop badvpn@* >/dev/null 2>&1 || true
+
+  echo "🚫 Desabilitando instâncias..."
+  systemctl disable badvpn@* >/dev/null 2>&1 || true
+  systemctl disable badvpn >/dev/null 2>&1 || true
+
+  echo "🧹 Limpando services antigos..."
+  rm -f /etc/systemd/system/badvpn@.service
+  rm -f /etc/systemd/system/badvpn.service
+
+  echo "🧨 Matando processos órfãos..."
+  pkill -9 badvpn-udpgw >/dev/null 2>&1 || true
+
+  systemctl daemon-reload
+  systemctl daemon-reexec
+
+  echo "🧱 Restaurando service simples (7300)..."
+
+  cat > /etc/systemd/system/badvpn.service <<'EOF'
+[Unit]
+Description=BadVPN UDPGW Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/badvpn-udpgw \
+--listen-addr 0.0.0.0:7300 \
+--max-clients 1000
+
+Restart=always
+RestartSec=3
+KillMode=process
+User=root
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  systemctl daemon-reload
+  systemctl enable badvpn >/dev/null 2>&1
+  systemctl start badvpn
+
+  echo ""
+  echo "✅ Multi-portas REMOVIDO com sucesso"
+  echo "➡️ BadVPN ativo apenas na porta 7300"
+  pause
+}
+
+restart_multiport() {
+  banner
+
+  # Verificar se multi-porta existe
+  if [[ ! -f /etc/systemd/system/badvpn@.service ]]; then
+    echo "❌ Multi-portas não está configurado"
+    pause
+    return
+  fi
+
+  echo "🔄 Reiniciando BadVPN MULTI-PORTA..."
+  sleep 1
+
+  echo "🛑 Parando instâncias..."
+  systemctl stop badvpn >/dev/null 2>&1 || true
+  systemctl stop badvpn@* >/dev/null 2>&1 || true
+
+  echo "🧨 Limpando processos órfãos..."
+  pkill -9 badvpn-udpgw >/dev/null 2>&1 || true
+
+  echo "🚀 Iniciando novamente..."
+  systemctl start badvpn
+
+  sleep 1
+
+  # Verificação final
+  if ss -lun | grep -Eq ':(7300|3478|10000)'; then
+    echo "✅ Multi-portas reiniciado com sucesso"
+  else
+    echo "⚠️ Atenção: nenhuma porta ativa após reinício"
+  fi
+
+  pause
+}
+
 while true; do
   banner
   echo " 1) Instalar BadVPN"
@@ -152,8 +456,12 @@ while true; do
   echo " 4) Reiniciar"
   echo " 5) Remover"
   echo ""
-  echo " 6) Otimizar sistema + BadVPN [BETA]"
-  echo " 7) Remover otimizações"
+  echo " 6) Iniciar Multi Portas"
+  echo " 7) Reiniciar Multi Portas"
+  echo " 8) Remover Multi Portas"
+  echo ""
+  echo " 9) Otimizar sistema + BadVPN [BETA]"
+  echo " 10) Remover otimizações"
   echo ""
   echo " 0) Sair"
   echo ""
@@ -165,8 +473,11 @@ while true; do
     3) stop_badvpn ;;
     4) restart_badvpn ;;
     5) uninstall_badvpn ;;
-    6) optimize_badvpn ;;
-    7) remove_optimizations ;;
+    6) setup_multiport ;;
+    7) restart_multiport ;;
+    8) remove_multiport ;;
+    9) optimize_badvpn ;;
+    10) remove_optimizations ;;
     0) clear; exit 0 ;;
     *) echo "Opção inválida"; sleep 1 ;;
   esac
