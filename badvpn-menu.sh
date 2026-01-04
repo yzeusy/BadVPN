@@ -41,9 +41,9 @@ banner() {
   fi
 
   if [[ -n "$ports" ]]; then
-    echo -e " Status: ${GREEN}ATIVO | Portas: $ports ${NC}"
+    echo -e "Status: ${GREEN}ATIVO | Portas: $ports ${NC}"
   else
-    echo -e " Status: ${RED}PARADO${NC}"
+    echo -e "Status: ${RED}PARADO${NC}"
   fi
 }
   echo "======================================="
