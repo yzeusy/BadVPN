@@ -13,4 +13,4 @@ rm -rf /etc/badvpn
 
 systemctl daemon-reload
 
-echo "✅ BadVPN removido"
+echo "✅ BadVPN removido completamente"

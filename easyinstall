@@ -1,9 +1,24 @@
 #!/bin/bash
-
 set -e
 
-REPO="https://raw.githubusercontent.com/yzeusy/BadVPN/main"
+REPO_GIT="https://github.com/yzeusy/BadVPN.git"
+INSTALL_DIR="/etc/badvpn"
 
+echo "📦 Instalando BadVPN em $INSTALL_DIR"
+
+# Dependências mínimas
+apt update -y
+apt install -y git wget
+
+# Remover instalação antiga
+rm -rf $INSTALL_DIR
+
+# Clonar repositório
+git clone $REPO_GIT $INSTALL_DIR
+
+cd $INSTALL_DIR
+
+# Detectar arquitetura
 ARCH=$(uname -m)
 case "$ARCH" in
   x86_64) ARCH_DIR="amd64" ;;
@@ -14,33 +29,23 @@ case "$ARCH" in
     ;;
 esac
 
-echo "📦 Arquitetura detectada: $ARCH_DIR"
+echo "🧠 Arquitetura detectada: $ARCH_DIR"
 
-TMP=$(mktemp -d)
-cd "$TMP"
+# Instalar binários
+install -Dm755 bin/$ARCH_DIR/badvpn-server /usr/local/bin/badvpn-server
+install -Dm755 bin/$ARCH_DIR/badvpn-udpgw /usr/local/bin/badvpn-udpgw
+install -Dm755 bin/$ARCH_DIR/badvpn-tun2socks /usr/local/bin/badvpn-tun2socks
 
-echo "⬇️ Baixando binários..."
-for f in badvpn-server badvpn-udpgw badvpn-tun2socks; do
-  wget -q "$REPO/bin/$ARCH_DIR/$f"
-  chmod +x "$f"
-done
-
-install -Dm755 badvpn-server /usr/local/bin/badvpn-server
-install -Dm755 badvpn-udpgw /usr/local/bin/badvpn-udpgw
-install -Dm755 badvpn-tun2socks /usr/local/bin/badvpn-tun2socks
-
-echo "⬇️ Instalando scripts..."
-wget -q "$REPO/badvpnctl"
-wget -q "$REPO/badvpn.service"
-
+# Instalar comando único
 install -Dm755 badvpnctl /usr/local/bin/badvpn
-install -Dm644 badvpn.service /etc/systemd/system/badvpn.service
 
-mkdir -p /etc/badvpn
+# Instalar systemd
+install -Dm644 badvpn.service /etc/systemd/system/badvpn.service
 
 systemctl daemon-reexec
 systemctl daemon-reload
 systemctl enable badvpn
 
-echo "✅ Instalação concluída!"
-echo "👉 Use: badvpn start | stop | status"
+echo "✅ BadVPN instalado com sucesso!"
+echo "👉 Menu: sudo /etc/badvpn/badvpn-menu.sh"
+echo "👉 Comando: badvpn start | stop | status"
