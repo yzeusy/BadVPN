@@ -61,7 +61,6 @@ remove_optimizations() {
   pause
 }
 
-uninstall_badvpn() {
   uninstall_badvpn() {
   banner
   read -p "Tem certeza que deseja REMOVER COMPLETAMENTE o BadVPN? (s/n): " yn
