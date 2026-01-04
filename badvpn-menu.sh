@@ -25,7 +25,7 @@ banner() {
   echo "            BadVPN Manager             "
   echo "======================================="
   if [ -n "$ACTIVE_PORTS" ]; then
-    echo -e " Status: ${GREEN}ATIVO${NC} | Portas:${GREEN}$ACTIVE_PORTS${NC}"
+    echo -e " Status: ${GREEN}ATIVO | Portas: $ACTIVE_PORTS ${NC}"
   else
     echo -e " Status: ${RED}PARADO${NC}"
   fi
@@ -190,6 +190,55 @@ EOF
   pause
 }
 
+remove_multiport() {
+  banner
+  read -p "Remover configuração MULTI-PORTA e voltar para porta única (7300)? (s/n): " yn
+
+  if [[ ! "$yn" =~ ^[Ss]$ ]]; then
+    echo "❌ Operação cancelada"
+    pause
+    return
+  fi
+
+  echo "🛑 Parando instâncias multi-porta..."
+  systemctl stop badvpn@* >/dev/null 2>&1 || true
+  systemctl disable badvpn@* >/dev/null 2>&1 || true
+
+  echo "🧹 Removendo service template..."
+  rm -f /etc/systemd/system/badvpn@.service
+
+  echo "♻️ Restaurando BadVPN porta única (7300)..."
+
+  cat > /etc/systemd/system/badvpn.service <<'EOF'
+[Unit]
+Description=BadVPN UDPGW Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/badvpn-udpgw \
+--listen-addr 0.0.0.0:7300 \
+--max-clients 1000
+
+Restart=always
+RestartSec=3
+User=root
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  systemctl daemon-reload
+  systemctl enable badvpn >/dev/null 2>&1
+  systemctl restart badvpn
+
+  echo ""
+  echo "✅ Multi-portas REMOVIDO"
+  echo "➡️ BadVPN ativo apenas na porta 7300"
+  pause
+}
+
 
 while true; do
   banner
@@ -201,9 +250,10 @@ while true; do
   echo " 5) Reiniciar"
   echo ""
   echo " 6) Iniciar Multi-Porta [7300 / 3478 / 10000]"
+  echo " 7) Remover Multi-Portas"
   echo ""
-  echo " 7) Otimizar sistema + BadVPN [BETA]"
-  echo " 8) Remover otimizações"
+  echo " 8) Otimizar sistema + BadVPN [BETA]"
+  echo " 9) Remover otimizações"
   echo ""
   echo " 0) Sair"
   echo ""
@@ -216,8 +266,9 @@ while true; do
     4) stop_badvpn ;;
     5) restart_badvpn ;;
     6) setup_multiport ;;
-    7) optimize_badvpn ;;
-    8) remove_optimizations ;;
+    7) remove_multiport ;;
+    8) optimize_badvpn ;;
+    9) remove_optimizations ;;
     0) clear; exit 0 ;;
     *) echo "Opção inválida"; sleep 1 ;;
   esac
