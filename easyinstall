@@ -4,19 +4,35 @@ set -e
 REPO_GIT="https://github.com/yzeusy/BadVPN.git"
 INSTALL_DIR="/etc/badvpn"
 
-echo "📦 Instalando BadVPN em $INSTALL_DIR"
+echo "📦 Instalando / Atualizando BadVPN"
 
-# Dependências mínimas
-apt update -y
-apt install -y git wget
+# Garantir root
+if [ "$EUID" -ne 0 ]; then
+  echo "❌ Execute como root"
+  exit 1
+fi
 
-# Remover instalação antiga
-rm -rf $INSTALL_DIR
+# Dependências
+apt update -y >/dev/null 2>&1
+apt install -y git wget >/dev/null 2>&1
 
-# Clonar repositório
-git clone $REPO_GIT $INSTALL_DIR
+# Parar serviço se existir
+systemctl stop badvpn >/dev/null 2>&1 || true
+systemctl disable badvpn >/dev/null 2>&1 || true
 
-cd $INSTALL_DIR
+# Remover instalações antigas
+rm -rf /etc/badvpn
+rm -f /usr/local/bin/badvpn
+rm -f /usr/local/bin/badvpn-server
+rm -f /usr/local/bin/badvpn-udpgw
+rm -f /usr/local/bin/badvpn-tun2socks
+rm -f /etc/systemd/system/badvpn.service
+rm -rf /etc/systemd/system/badvpn.service.d
+
+# Clonar repositório NOVAMENTE
+git clone "$REPO_GIT" "$INSTALL_DIR" >/dev/null 2>&1
+
+cd "$INSTALL_DIR"
 
 # Detectar arquitetura
 ARCH=$(uname -m)
@@ -31,7 +47,7 @@ esac
 
 echo "🧠 Arquitetura detectada: $ARCH_DIR"
 
-# Instalar binários
+# Instalar binários (SUBSTITUI sem perguntar)
 install -Dm755 bin/$ARCH_DIR/badvpn-server /usr/local/bin/badvpn-server
 install -Dm755 bin/$ARCH_DIR/badvpn-udpgw /usr/local/bin/badvpn-udpgw
 install -Dm755 bin/$ARCH_DIR/badvpn-tun2socks /usr/local/bin/badvpn-tun2socks
@@ -42,10 +58,11 @@ install -Dm755 badvpnctl /usr/local/bin/badvpn
 # Instalar systemd
 install -Dm644 badvpn.service /etc/systemd/system/badvpn.service
 
+# Recarregar systemd
 systemctl daemon-reexec
 systemctl daemon-reload
-systemctl enable badvpn
+systemctl enable badvpn >/dev/null 2>&1
 
-echo "✅ BadVPN instalado com sucesso!"
+echo "✅ BadVPN instalado / atualizado com sucesso!"
 echo "👉 Menu: sudo /etc/badvpn/badvpn-menu.sh"
 echo "👉 Comando: badvpn start | stop | status"
