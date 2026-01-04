@@ -8,15 +8,26 @@ pause() {
 }
 
 banner() {
+  GREEN="\e[32m"
+  RED="\e[31m"
+  NC="\e[0m"
+
+  PORT_LIST="7300 3478 10000"
+  ACTIVE_PORTS=""
+
+  for p in $PORT_LIST; do
+    if ss -lun | awk '{print $5}' | grep -q ":$p$"; then
+      ACTIVE_PORTS="$ACTIVE_PORTS $p"
+    fi
+  done
   clear
   echo "======================================="
   echo "            BadVPN Manager             "
   echo "======================================="
-  PORTS=$(ss -lunp 2>/dev/null | grep badvpn-udpgw | awk '{print $5}' | awk -F: '{print $NF}' | sort -n | tr '\n' ' ')
-  if [ -n "$PORTS" ]; then
-    echo " Status:${GREEN} ATIVO | Portas: $PORTS${NC}"
+  if [ -n "$ACTIVE_PORTS" ]; then
+    echo -e " Status: ${GREEN}ATIVO${NC} | Portas:${GREEN}$ACTIVE_PORTS${NC}"
   else
-    echo " ${RED}Status: PARADO${NC}"
+    echo -e " Status: ${RED}PARADO${NC}"
   fi
   echo "======================================="
   echo ""
@@ -81,17 +92,81 @@ uninstall_badvpn() {
   pause
 }
 
+setup_multiport() {
+  banner
+  echo "Configurando BadVPN Multi-Porta..."
+  sleep 1
+
+  # Criar service template
+  cat > /etc/systemd/system/badvpn@.service <<'EOF'
+[Unit]
+Description=BadVPN UDPGW (%i)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/badvpn-udpgw \
+--listen-addr 0.0.0.0:%i \
+--max-clients 1000
+
+Restart=always
+RestartSec=3
+User=root
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  # Criar service pai
+  cat > /etc/systemd/system/badvpn.service <<'EOF'
+[Unit]
+Description=BadVPN UDPGW (All Ports)
+After=network.target
+Requires=badvpn@7300.service badvpn@3478.service badvpn@10000.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/true
+ExecStop=/bin/true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  # Recarregar systemd
+  systemctl daemon-reload
+
+  # Ativar serviços
+  systemctl enable badvpn@7300 badvpn@3478 badvpn@10000 >/dev/null 2>&1
+  systemctl enable badvpn >/dev/null 2>&1
+
+  # Reiniciar
+  systemctl restart badvpn
+
+  echo ""
+  echo "✅ BadVPN configurado em MULTI-PORTA:"
+  echo "   • UDP 7300"
+  echo "   • UDP 3478"
+  echo "   • UDP 10000"
+  pause
+}
+
+
 while true; do
   banner
   echo " 1) Instalar BadVPN"
   echo " 2) Remover BadVPN"
   echo ""
-  echo " 3) Iniciar"
+  echo " 3) Iniciar [7300]"
   echo " 4) Parar"
   echo " 5) Reiniciar"
   echo ""
-  echo " 6) Otimizar sistema + BadVPN [BETA]"
-  echo " 7) Remover otimizações"
+  echo " 6) Iniciar Multi-Porta [7300 / 3478 / 10000]"
+  echo ""
+  echo " 7) Otimizar sistema + BadVPN [BETA]"
+  echo " 8) Remover otimizações"
   echo ""
   echo " 0) Sair"
   echo ""
@@ -103,8 +178,9 @@ while true; do
     3) start_badvpn ;;
     4) stop_badvpn ;;
     5) restart_badvpn ;;
-    6) optimize_badvpn ;;
-    7) remove_optimizations ;;
+    6) setup_multiport ;;
+    7) optimize_badvpn ;;
+    8) remove_optimizations ;;
     0) clear; exit 0 ;;
     *) echo "Opção inválida"; sleep 1 ;;
   esac
