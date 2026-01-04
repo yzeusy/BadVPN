@@ -13,6 +13,7 @@ ExecStart=/bin/bash -c '\
 '
 
 ExecStop=/usr/bin/pkill -f badvpn-udpgw
+
 Restart=no
 User=root
 LimitNOFILE=1048576
