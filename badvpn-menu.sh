@@ -13,22 +13,39 @@ banner() {
   RED="\e[31m"
   NC="\e[0m"
 
-  PORT_LIST="7300 3478 10000"
-  ACTIVE_PORTS=""
+  get_active_ports() {
+  local ports services status color
 
-  for p in $PORT_LIST; do
-    if ss -lun | awk '{print $5}' | grep -q ":$p$"; then
-      ACTIVE_PORTS="$ACTIVE_PORTS $p"
-    fi
+  # Coletar services badvpn ativos
+  services=$(systemctl list-units --type=service --all | awk '/badvpn/ && /running/ {print $1}')
+
+  [[ -z "$services" ]] && {
+    echo -e " Status: ${RED}PARADO${NC}"
+    return
+  }
+
+  ports=""
+
+  for svc in $services; do
+    # Extrair listen-addr do ExecStart
+    port=$(systemctl cat "$svc" 2>/dev/null \
+      | grep -- '--listen-addr' \
+      | sed -n 's/.*--listen-addr [^:]*:\([0-9]\+\).*/\1/p')
+
+    [[ -n "$port" ]] && ports+="$port "
   done
-  echo "======================================="
-  echo "            BadVPN Manager             "
-  echo "======================================="
-  if [ -n "$ACTIVE_PORTS" ]; then
-    echo -e " Status: ${GREEN}ATIVO${NC} | Portas:${GREEN}$ACTIVE_PORTS${NC}"
+  ports=$(echo "$ports" | tr ' ' '\n' | sort -n | uniq | tr '\n' ' ')
+
+  if [[ -n "$ports" ]]; then
+    echo -e " Status: ${GREEN}ATIVO | Portas: $ports ${NC}"
   else
     echo -e " Status: ${RED}PARADO${NC}"
   fi
+}
+  echo "======================================="
+  echo "            BadVPN Manager             "
+  echo "======================================="
+  get_active_ports
   echo "======================================="
 }
 
