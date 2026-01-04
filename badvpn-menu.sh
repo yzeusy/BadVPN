@@ -81,15 +81,52 @@ remove_optimizations() {
 }
 
 uninstall_badvpn() {
+  uninstall_badvpn() {
   banner
-  read -p "Tem certeza que deseja REMOVER o BadVPN? (s/n): " yn
-  if [[ "$yn" =~ ^[Ss]$ ]]; then
-    sudo bash "$BASE/uninstall" >/dev/null 2>&1
-    echo "🗑️ BadVPN removido completamente"
-  else
+  read -p "Tem certeza que deseja REMOVER COMPLETAMENTE o BadVPN? (s/n): " yn
+
+  if [[ ! "$yn" =~ ^[Ss]$ ]]; then
     echo "❌ Operação cancelada"
+    pause
+    return
   fi
+
+  echo "🛑 Parando serviços BadVPN..."
+  systemctl stop badvpn >/dev/null 2>&1 || true
+  systemctl stop badvpn@* >/dev/null 2>&1 || true
+
+  echo "🚫 Desabilitando serviços..."
+  systemctl disable badvpn >/dev/null 2>&1 || true
+  systemctl disable badvpn@* >/dev/null 2>&1 || true
+
+  echo "🔄 Recarregando systemd..."
+  systemctl daemon-reload
+
+  echo "🧹 Removendo arquivos..."
+
+  # Remover services
+  rm -f /etc/systemd/system/badvpn.service
+  rm -f /etc/systemd/system/badvpn@.service
+
+  # Remover diretório do repo
+  rm -rf /etc/badvpn
+
+  # Remover binários
+  rm -f /usr/local/bin/badvpn
+  rm -f /usr/local/bin/badvpn-udpgw
+  rm -f /usr/local/bin/badvpn-server
+  rm -f /usr/local/bin/badvpn-tun2socks
+
+  # Remover otimizações (se existirem)
+  rm -f /etc/sysctl.d/99-badvpn.conf
+  rm -rf /etc/systemd/system/badvpn.service.d
+
+  systemctl daemon-reexec >/dev/null 2>&1
+
+  echo ""
+  echo "✅ BadVPN REMOVIDO COMPLETAMENTE do sistema"
   pause
+}
 }
 
 setup_multiport() {
