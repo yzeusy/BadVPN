@@ -10,7 +10,14 @@ pause() {
 banner() {
   clear
   echo "======================================="
-  echo "        BadVPN Manager - yzeusy         "
+  echo "            BadVPN Manager             "
+  echo "======================================="
+  PORTS=$(ss -lunp 2>/dev/null | grep badvpn-udpgw | awk '{print $5}' | awk -F: '{print $NF}' | sort -n | tr '\n' ' ')
+  if [ -n "$PORTS" ]; then
+    echo " Status:${GREEN} ATIVO | Portas: $PORTS${NC}"
+  else
+    echo " ${RED}Status: PARADO${NC}"
+  fi
   echo "======================================="
   echo ""
 }
@@ -40,12 +47,6 @@ restart_badvpn() {
   banner
   sudo systemctl restart badvpn >/dev/null 2>&1
   echo "🔄 BadVPN reiniciado"
-  pause
-}
-
-status_badvpn() {
-  banner
-  systemctl status badvpn --no-pager
   pause
 }
 
@@ -83,30 +84,28 @@ uninstall_badvpn() {
 while true; do
   banner
   echo " 1) Instalar BadVPN"
-  echo " 2) Iniciar BadVPN"
-  echo " 3) Parar BadVPN"
-  echo " 4) Reiniciar BadVPN"
-  echo " 5) Status BadVPN"
+  echo " 2) Remover BadVPN"
   echo ""
-  echo " 6) Otimizar sistema + BadVPN"
+  echo " 3) Iniciar"
+  echo " 4) Parar"
+  echo " 5) Reiniciar"
+  echo ""
+  echo " 6) Otimizar sistema + BadVPN [BETA]"
   echo " 7) Remover otimizações"
   echo ""
-  echo " 8) Remover BadVPN"
-  echo ""
-  echo " 00) Sair"
+  echo " 0) Sair"
   echo ""
   read -p "Escolha uma opção: " opt
 
   case "$opt" in
     1) install_badvpn ;;
-    2) start_badvpn ;;
-    3) stop_badvpn ;;
-    4) restart_badvpn ;;
-    5) status_badvpn ;;
+    2) uninstall_badvpn ;;
+    3) start_badvpn ;;
+    4) stop_badvpn ;;
+    5) restart_badvpn ;;
     6) optimize_badvpn ;;
     7) remove_optimizations ;;
-    8) uninstall_badvpn ;;
-    00) clear; exit 0 ;;
+    0) clear; exit 0 ;;
     *) echo "Opção inválida"; sleep 1 ;;
   esac
 done
