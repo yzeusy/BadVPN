@@ -14,27 +14,31 @@ banner() {
   NC="\e[0m"
 
   get_active_ports() {
-  local ports services status color
+  local ports=""
 
-  # Coletar services badvpn ativos
-  services=$(systemctl list-units --type=service --all | awk '/badvpn/ && /running/ {print $1}')
+  # MULTI-PORTAS EXISTE
+  if [[ -f /etc/systemd/system/badvpn@.service ]]; then
 
-  [[ -z "$services" ]] && {
-    echo -e " Status: ${RED}PARADO${NC}"
-    return
-  }
+    # 1️⃣ Tentar pegar portas ATIVAS
+    ports=$(systemctl list-units --type=service --state=running \
+      | awk '/badvpn@[0-9]+\.service/ {
+          gsub(/.*@|\.service/, "", $1); print $1
+        }' | sort -n | tr '\n' ' ')
 
-  ports=""
+    # 2️⃣ Se não houver portas ativas, pegar portas CONFIGURADAS
+    if [[ -z "$ports" ]]; then
+      ports=$(systemctl cat badvpn 2>/dev/null \
+        | awk '/Requires=badvpn@[0-9]+\.service/ {
+            gsub(/.*@|\.service/, "", $0); print $0
+          }' | sort -n | tr '\n' ' ')
+    fi
 
-  for svc in $services; do
-    # Extrair listen-addr do ExecStart
-    port=$(systemctl cat "$svc" 2>/dev/null \
+  else
+    # PORTA ÚNICA (ativa ou parada)
+    ports=$(systemctl cat badvpn 2>/dev/null \
       | grep -- '--listen-addr' \
-      | sed -n 's/.*--listen-addr [^:]*:\([0-9]\+\).*/\1/p')
-
-    [[ -n "$port" ]] && ports+="$port "
-  done
-  ports=$(echo "$ports" | tr ' ' '\n' | sort -n | uniq | tr '\n' ' ')
+      | sed -n 's/.*:\([0-9]\+\).*/\1/p')
+  fi
 
   if [[ -n "$ports" ]]; then
     echo -e " Status: ${GREEN}ATIVO | Portas: $ports ${NC}"
