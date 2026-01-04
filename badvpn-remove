@@ -1,0 +1,16 @@
+#!/bin/bash
+
+systemctl stop badvpn 2>/dev/null || true
+systemctl disable badvpn 2>/dev/null || true
+
+rm -f /usr/local/bin/badvpn
+rm -f /usr/local/bin/badvpn-server
+rm -f /usr/local/bin/badvpn-udpgw
+rm -f /usr/local/bin/badvpn-tun2socks
+
+rm -f /etc/systemd/system/badvpn.service
+rm -rf /etc/badvpn
+
+systemctl daemon-reload
+
+echo "✅ BadVPN removido"

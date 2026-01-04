@@ -1,0 +1,22 @@
+#!/bin/bash
+
+SERVICE="badvpn.service"
+
+case "$1" in
+  start)
+    systemctl start $SERVICE
+    ;;
+  stop)
+    systemctl stop $SERVICE
+    ;;
+  restart)
+    systemctl restart $SERVICE
+    ;;
+  status)
+    systemctl status $SERVICE --no-pager
+    ;;
+  *)
+    echo "Uso: badvpn {start|stop|restart|status}"
+    exit 1
+    ;;
+esac

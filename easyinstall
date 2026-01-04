@@ -1,11 +1,46 @@
 #!/bin/bash
 
-echo "Instalando BadVPN completa..."
+set -e
 
-install -Dm755 bin/badvpn-server /usr/local/bin/badvpn-server
-install -Dm755 bin/badvpn-tun2socks /usr/local/bin/badvpn-tun2socks
-install -Dm755 bin/badvpn-udpgw /usr/local/bin/badvpn-udpgw
+REPO="https://raw.githubusercontent.com/yzeusy/BadVPN/main"
+
+ARCH=$(uname -m)
+case "$ARCH" in
+  x86_64) ARCH_DIR="amd64" ;;
+  aarch64|arm64) ARCH_DIR="arm64" ;;
+  *)
+    echo "❌ Arquitetura não suportada: $ARCH"
+    exit 1
+    ;;
+esac
+
+echo "📦 Arquitetura detectada: $ARCH_DIR"
+
+TMP=$(mktemp -d)
+cd "$TMP"
+
+echo "⬇️ Baixando binários..."
+for f in badvpn-server badvpn-udpgw badvpn-tun2socks; do
+  wget -q "$REPO/bin/$ARCH_DIR/$f"
+  chmod +x "$f"
+done
+
+install -Dm755 badvpn-server /usr/local/bin/badvpn-server
+install -Dm755 badvpn-udpgw /usr/local/bin/badvpn-udpgw
+install -Dm755 badvpn-tun2socks /usr/local/bin/badvpn-tun2socks
+
+echo "⬇️ Instalando scripts..."
+wget -q "$REPO/badvpnctl"
+wget -q "$REPO/badvpn.service"
+
+install -Dm755 badvpnctl /usr/local/bin/badvpn
+install -Dm644 badvpn.service /etc/systemd/system/badvpn.service
 
 mkdir -p /etc/badvpn
 
-echo "Instalação concluída!"
+systemctl daemon-reexec
+systemctl daemon-reload
+systemctl enable badvpn
+
+echo "✅ Instalação concluída!"
+echo "👉 Use: badvpn start | stop | status"
