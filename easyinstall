@@ -1,0 +1,11 @@
+#!/bin/bash
+
+echo "Instalando BadVPN completa..."
+
+install -Dm755 bin/badvpn-server /usr/local/bin/badvpn-server
+install -Dm755 bin/badvpn-tun2socks /usr/local/bin/badvpn-tun2socks
+install -Dm755 bin/badvpn-udpgw /usr/local/bin/badvpn-udpgw
+
+mkdir -p /etc/badvpn
+
+echo "Instalação concluída!"
