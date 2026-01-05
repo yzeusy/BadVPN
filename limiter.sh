@@ -22,12 +22,11 @@ detect_openvpn_conf() {
 
 apply_ssh_lock() {
   [[ -f "$SSHD_BACKUP" ]] || cp "$SSHD_CONFIG" "$SSHD_BACKUP"
-  sed -i '/^MaxSessions/d;/^MaxStartups/d' "$SSHD_CONFIG"
+  sed -i '/^MaxSessions/d' "$SSHD_CONFIG"
   cat >> "$SSHD_CONFIG" <<EOF
 
 # === LIMITER LOCK ===
 MaxSessions 1
-MaxStartups 1:1:1
 EOF
   systemctl restart ssh
 }
