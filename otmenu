@@ -68,7 +68,7 @@ checkuser () {
 
 limiter () {
   banner
-  bash <(curl -sL https://raw.githubusercontent.com/DTunnel0/CheckUser-Go/master/limiter)
+  bash <(curl -sL https://raw.githubusercontent.com/yzeusy/BadVPN/refs/heads/main/limiter.sh)
 }
 
 while true; do
