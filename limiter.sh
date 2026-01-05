@@ -50,24 +50,30 @@ check_user() {
   local user=$1
   local limit=$2
 
-  local ssh ovpn badvpn total
+  local ssh ovpn badvpn
   ssh=$(count_ssh "$user")
   ovpn=$(count_openvpn "$user")
   badvpn=$(count_badvpn "$user")
 
-  total=$((ssh + ovpn + badvpn))
-  (( total <= limit )) && return
+  # 🚨 TOLERÂNCIA ZERO
+  # Se QUALQUER serviço ultrapassar o limite → derruba NA HORA
 
-  log "$user LIMITE EXCEDIDO TOTAL=$total LIMITE=$limit"
-
-  if (( ssh > 0 )); then
+  if (( ssh > limit )); then
     pkill -u "$user"
-    log "$user SSH FINALIZADO"
-  elif (( ovpn > 0 )); then
-    kill_openvpn "$user" $((total - limit))
-  else
+    log "$user SSH TOLERANCIA ZERO ($ssh/$limit)"
+    return
+  fi
+
+  if (( ovpn > limit )); then
+    kill_openvpn "$user" $((ovpn - limit))
+    log "$user OPENVPN TOLERANCIA ZERO ($ovpn/$limit)"
+    return
+  fi
+
+  if (( badvpn > limit )); then
     pkill -f "badvpn-udpgw.*$user"
-    log "$user BADVPN FINALIZADO"
+    log "$user BADVPN TOLERANCIA ZERO ($badvpn/$limit)"
+    return
   fi
 }
 
