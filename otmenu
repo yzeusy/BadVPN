@@ -72,7 +72,7 @@ while true; do
   echo "======================================="
   echo " 02) Gerenciar BadVPN"
   echo "======================================="
-  echo " 03) CheckUser DTuneel"
+  echo " 03) CheckUser DTunnel"
   echo "======================================="
   echo " 00) Sair"
   echo ""
