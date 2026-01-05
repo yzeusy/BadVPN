@@ -453,36 +453,34 @@ restart_multiport() {
 
 while true; do
   banner
-  echo " 1) Instalar BadVPN"
-  echo ""
-  echo " 2) Iniciar [7300]"
-  echo " 3) Parar"
-  echo " 4) Reiniciar"
-  echo " 5) Remover"
-  echo ""
-  echo " 6) Iniciar Multi Portas"
-  echo " 7) Reiniciar Multi Portas"
-  echo " 8) Remover Multi Portas"
-  echo ""
-  echo " 9) Otimizar sistema + BadVPN [BETA]"
-  echo " 10) Remover otimizações"
-  echo ""
-  echo " 0) Sair"
+  echo " 01) Instalar BadVPN"
+  echo " 02) Remover BadVPN"
+  echo "======================================="
+  echo " 03) Abrir Porta: 7300"
+  echo " 04) Reiniciar"
+  echo "======================================="
+  echo " 05) Abrir Multi Portas"
+  echo " 06) Reiniciar"
+  echo " 07) Remover"
+  echo "======================================="
+  echo " 08) Otimizar BadVPN [BETA]"
+  echo " 09) Remover otimizações"
+  echo "======================================="
+  echo " 00) Sair"
   echo ""
   read -p "Escolha uma opção: " opt
 
   case "$opt" in
-    1) install_badvpn ;;
-    2) start_badvpn ;;
-    3) stop_badvpn ;;
-    4) restart_badvpn ;;
-    5) uninstall_badvpn ;;
-    6) setup_multiport ;;
-    7) restart_multiport ;;
-    8) remove_multiport ;;
-    9) optimize_badvpn ;;
-    10) remove_optimizations ;;
-    0) clear; exit 0 ;;
+    01 | 1) install_badvpn ;;
+    02 | 2) uninstall_badvpn ;;
+    03 | 3) start_badvpn ;;
+    04 | 4) restart_badvpn ;;
+    05 | 5) setup_multiport ;;
+    06 | 6) restart_multiport ;;
+    07 | 7) remove_multiport ;;
+    08 | 8) optimize_badvpn ;;
+    09 | 9) remove_optimizations ;;
+    00 | 0) clear; exit 0 ;;
     *) echo "Opção inválida"; sleep 1 ;;
   esac
 done

@@ -1,0 +1,88 @@
+#!/bin/bash
+
+BASE="/etc/badvpn"
+
+pause() {
+  echo ""
+  read -p "Pressione ENTER para voltar ao menu..."
+}
+
+banner() {
+  clear
+  GREEN="\e[32m"
+  RED="\e[31m"
+  NC="\e[0m"
+
+  get_active_ports() {
+  local ports=""
+
+  # MULTI-PORTAS EXISTE
+  if [[ -f /etc/systemd/system/badvpn@.service ]]; then
+
+    # 1️⃣ Tentar pegar portas ATIVAS
+    ports=$(systemctl list-units --type=service --state=running \
+      | awk '/badvpn@[0-9]+\.service/ {
+          gsub(/.*@|\.service/, "", $1); print $1
+        }' | sort -n | tr '\n' ' ')
+
+    # 2️⃣ Se não houver portas ativas, pegar portas CONFIGURADAS
+    if [[ -z "$ports" ]]; then
+      ports=$(systemctl cat badvpn 2>/dev/null \
+        | awk '/Requires=badvpn@[0-9]+\.service/ {
+            gsub(/.*@|\.service/, "", $0); print $0
+          }' | sort -n | tr '\n' ' ')
+    fi
+
+  else
+    # PORTA ÚNICA (ativa ou parada)
+    ports=$(systemctl cat badvpn 2>/dev/null \
+      | grep -- '--listen-addr' \
+      | sed -n 's/.*:\([0-9]\+\).*/\1/p')
+  fi
+
+  if [[ -n "$ports" ]]; then
+    echo -e "Status: ${GREEN}ATIVO | Portas: $ports ${NC}"
+  else
+    echo -e "Status: ${RED}PARADO${NC}"
+  fi
+}
+  echo "======================================="
+  echo "            Menu Principal             "
+  echo "======================================="
+}
+
+otimizacao () {
+  banner
+  bash <(curl -sL https://raw.githubusercontent.com/yzeusy/BadVPN/refs/heads/main/otimizar.sh)
+}
+
+badvpn () {
+  banner
+  bash <(curl -sL https://raw.githubusercontent.com/yzeusy/BadVPN/refs/heads/main/badvpn-menu.sh)
+}
+
+checkuser () {
+  banner
+  bash <(curl -sL https://raw.githubusercontent.com/DTunnel0/CheckUser-Go/master/install.sh)
+}
+
+while true; do
+  banner
+  echo " 01) Otimizar Servidor"
+  echo "======================================="
+  echo " 02) Gerenciar BadVPN"
+  echo "======================================="
+  echo " 03) CheckUser DTuneel"
+  echo "======================================="
+  echo " 00) Sair"
+  echo ""
+  read -p "Escolha uma opção: " opt
+
+  case "$opt" in
+    01 | 1) otimizacao ;;
+    02 | 2) badvpn ;;
+    03 | 3) checkuser ;;
+    00 | 0) clear; exit 0 ;;
+    *) echo "Opção inválida"; sleep 1 ;;
+  esac
+done
