@@ -1,24 +1,71 @@
 #!/usr/bin/env bash
 
 # ================== CONFIG ==================
-BASE_DIR="/etc/limiter"
-CORE="$BASE_DIR/limiter_core.sh"
+CORE="/etc/limiter_core.sh"
 DATABASE="/root/usuarios.db"
-LOGFILE="$BASE_DIR/banido.log"
+LOGFILE="/etc/banido.log"
 SERVICE="/etc/systemd/system/limiter.service"
+
+SSHD_CONFIG="/etc/ssh/sshd_config"
+SSHD_BACKUP="/etc/ssh/sshd_config.limiter.bak"
+
+OVPN_CONFIG=""
+OVPN_BACKUP=""
 # ============================================
 
-create_core() {
-mkdir -p "$BASE_DIR"
+detect_openvpn_conf() {
+  for f in /etc/openvpn/server.conf /etc/openvpn/openvpn.conf /etc/openvpn/*.conf; do
+    [[ -f "$f" ]] && OVPN_CONFIG="$f" && break
+  done
+  [[ -n "$OVPN_CONFIG" ]] && OVPN_BACKUP="${OVPN_CONFIG}.limiter.bak"
+}
 
+apply_ssh_lock() {
+  [[ -f "$SSHD_BACKUP" ]] || cp "$SSHD_CONFIG" "$SSHD_BACKUP"
+  sed -i '/^MaxSessions/d;/^MaxStartups/d' "$SSHD_CONFIG"
+  cat >> "$SSHD_CONFIG" <<EOF
+
+# === LIMITER LOCK ===
+MaxSessions 1
+MaxStartups 1:1:1
+EOF
+  systemctl restart ssh
+}
+
+apply_openvpn_lock() {
+  detect_openvpn_conf
+  [[ -z "$OVPN_CONFIG" ]] && return
+  [[ -f "$OVPN_BACKUP" ]] || cp "$OVPN_CONFIG" "$OVPN_BACKUP"
+  sed -i '/^duplicate-cn/d' "$OVPN_CONFIG"
+  echo "duplicate-cn 0" >> "$OVPN_CONFIG"
+  systemctl restart openvpn 2>/dev/null || systemctl restart openvpn-server@server 2>/dev/null
+}
+
+restore_ssh_lock() {
+  [[ -f "$SSHD_BACKUP" ]] && {
+    cp "$SSHD_BACKUP" "$SSHD_CONFIG"
+    rm -f "$SSHD_BACKUP"
+    systemctl restart ssh
+  }
+}
+
+restore_openvpn_lock() {
+  detect_openvpn_conf
+  [[ -f "$OVPN_BACKUP" ]] && {
+    cp "$OVPN_BACKUP" "$OVPN_CONFIG"
+    rm -f "$OVPN_BACKUP"
+    systemctl restart openvpn 2>/dev/null || systemctl restart openvpn-server@server 2>/dev/null
+  }
+}
+
+create_core() {
 cat > "$CORE" << 'EOF'
 #!/usr/bin/env bash
 
-BASE_DIR="/etc/limiter"
 DATABASE="/root/usuarios.db"
-LOGFILE="$BASE_DIR/banido.log"
+LOGFILE="/etc/banido.log"
 OVPN_STATUS="/etc/openvpn/openvpn-status.log"
-INTERVAL=15
+INTERVAL=1
 
 log() {
   echo "[$(date '+%F %T')] $1" >> "$LOGFILE"
@@ -31,10 +78,6 @@ count_ssh() {
 count_openvpn() {
   [[ -f "$OVPN_STATUS" ]] || echo 0
   grep -c ",$1," "$OVPN_STATUS" 2>/dev/null
-}
-
-count_badvpn() {
-  ps aux | grep "[b]advpn-udpgw" | grep "$1" | wc -l
 }
 
 kill_openvpn() {
@@ -50,30 +93,18 @@ check_user() {
   local user=$1
   local limit=$2
 
-  local ssh ovpn badvpn
+  local ssh ovpn
   ssh=$(count_ssh "$user")
   ovpn=$(count_openvpn "$user")
-  badvpn=$(count_badvpn "$user")
-
-  # 🚨 TOLERÂNCIA ZERO
-  # Se QUALQUER serviço ultrapassar o limite → derruba NA HORA
 
   if (( ssh > limit )); then
     pkill -u "$user"
-    log "$user SSH TOLERANCIA ZERO ($ssh/$limit)"
-    return
+    log "$user SSH EXCEDEU ($ssh/$limit)"
   fi
 
   if (( ovpn > limit )); then
     kill_openvpn "$user" $((ovpn - limit))
-    log "$user OPENVPN TOLERANCIA ZERO ($ovpn/$limit)"
-    return
-  fi
-
-  if (( badvpn > limit )); then
-    pkill -f "badvpn-udpgw.*$user"
-    log "$user BADVPN TOLERANCIA ZERO ($badvpn/$limit)"
-    return
+    log "$user OPENVPN EXCEDEU ($ovpn/$limit)"
   fi
 }
 
@@ -82,7 +113,6 @@ while true; do
     id "$user" &>/dev/null || continue
     check_user "$user" "$limit"
   done < "$DATABASE"
-
   sleep "$INTERVAL"
 done
 EOF
@@ -93,7 +123,7 @@ chmod +x "$CORE"
 create_service() {
 cat > "$SERVICE" << EOF
 [Unit]
-Description=Limiter SSH OpenVPN BadVPN
+Description=Limiter SSH + OpenVPN Service
 After=network.target openvpn.service
 Wants=network.target
 
@@ -110,6 +140,9 @@ EOF
 }
 
 enable_limiter() {
+  echo "Ativando limiter..."
+  apply_ssh_lock
+  apply_openvpn_lock
   create_core
   create_service
 
@@ -121,20 +154,25 @@ enable_limiter() {
   systemctl enable limiter.service
   systemctl start limiter.service
 
-  echo "✅ Limiter ATIVADO"
+  echo "Limiter ATIVADO"
   sleep 2
 }
 
 disable_limiter() {
+  echo "Desativando limiter..."
   systemctl stop limiter.service 2>/dev/null
   systemctl disable limiter.service 2>/dev/null
 
+  restore_ssh_lock
+  restore_openvpn_lock
+
   rm -f "$SERVICE"
-  rm -rf "$BASE_DIR"
+  rm -f "$CORE"
+  rm -f "$LOGFILE"
 
   systemctl daemon-reload
 
-  echo "❌ Limiter DESATIVADO (usuarios.db preservado)"
+  echo "Limiter DESATIVADO"
   sleep 2
 }
 
@@ -148,24 +186,34 @@ menu() {
     STATUS=$(get_status)
 
     echo "====== LIMITER MANAGER ======"
+    echo "============================="
     echo "Status: [ $STATUS ]"
-    echo "============================"
+    echo "============================="
     echo "01) Ativar Limiter"
     echo "02) Desativar Limiter"
-    echo "============================"
-    echo "00) Voltar"
-    echo "============================"
+    echo "00) Volar"
+    echo "============================="
     read -rp "Escolha: " opt
 
     case $opt in
-    01 | 1) [[ "$STATUS" == "ATIVO" ]] || enable_limiter ;;
-    02 | 2) [[ "$STATUS" == "DESATIVADO" ]] || disable_limiter ;;
-    00 | 0) clear
-         bash <(curl -sL https://raw.githubusercontent.com/DTunnel0/CheckUser-Go/master/ottmenu)
-         exit ;;
-      *) echo "Opção inválida" ;;
+    01 | 1)
+        [[ "$STATUS" == "ATIVO" ]] && echo "Já está ativo" || enable_limiter
+        sleep 1
+        ;;
+    02 | 2)
+        [[ "$STATUS" == "DESATIVADO" ]] && echo "Já está desativado" || disable_limiter
+        sleep 1
+        ;;
+    00 | 0)
+        clear
+        bash <(curl -sL https://raw.githubusercontent.com/DTunnel0/CheckUser-Go/master/ottmenu)
+        exit
+        ;;
+      *)
+        echo "Opção inválida"
+        sleep 1
+        ;;
     esac
-    sleep 1
   done
 }
 
