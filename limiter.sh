@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # ================== CONFIG ==================
 BASE_DIR="/etc/limiter"
