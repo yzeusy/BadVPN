@@ -29,12 +29,16 @@ echo "=========================================="
 echo "1) Otimizar Servidor"
 echo "2) Remover Otimizações"
 echo "======================================="
-echo "0) Sair"
+echo "0) Voltar"
 echo
 read -p "Escolha uma opção [0/1/2]: " opcao
 clear
 
-[[ "$opcao" == "0" ]] && exit 0
+[[ "$opcao" == "0" ]]; then
+  clear
+  bash <(curl -sL https://raw.githubusercontent.com/DTunnel0/CheckUser-Go/master/ottmenu)
+  exit 0
+fi
 
 if [[ "$opcao" == "1" ]]; then
   add_sysctl "net.core.default_qdisc=fq"

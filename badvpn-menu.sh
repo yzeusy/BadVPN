@@ -466,7 +466,7 @@ while true; do
   echo " 08) Otimizar BadVPN [BETA]"
   echo " 09) Remover otimizações"
   echo "======================================="
-  echo " 00) Sair"
+  echo " 00) Voltar"
   echo ""
   read -p "Escolha uma opção: " opt
 
@@ -480,7 +480,7 @@ while true; do
     07 | 7) remove_multiport ;;
     08 | 8) optimize_badvpn ;;
     09 | 9) remove_optimizations ;;
-    00 | 0) clear; exit 0 ;;
+    00 | 0) clear; bash <(curl -sL https://raw.githubusercontent.com/DTunnel0/CheckUser-Go/master/ottmenu); exit ;;
     *) echo "Opção inválida"; sleep 1 ;;
   esac
 done
