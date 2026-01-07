@@ -329,7 +329,7 @@ EOF
 [Unit]
 Description=BadVPN UDPGW (Multi-Port)
 After=network.target
-Requires=badvpn@3478.service badvpn@7400.service badvpn@7500.service
+Requires=badvpn@7300.service badvpn@7400.service badvpn@3478.service
 
 [Service]
 Type=oneshot
@@ -343,15 +343,15 @@ EOF
 
   systemctl daemon-reload
 
-  echo "🚀 Ativando portas 3478 / 7400 / 7500..."
-  systemctl enable badvpn@3478 badvpn@7400 badvpn@7500 >/dev/null 2>&1
+  echo "🚀 Ativando portas 7300 / 7400 / 3478..."
+  systemctl enable badvpn@7300 badvpn@7400 badvpn@3478 >/dev/null 2>&1
   systemctl enable badvpn >/dev/null 2>&1
 
   systemctl start badvpn
 
   echo ""
   echo "✅ BadVPN MULTI-PORTA ativo com sucesso!"
-  echo "➡️ Portas: 3478 7400 7500"
+  echo "➡️ Portas: 7300 7400 3478"
   pause
 }
 
@@ -442,7 +442,7 @@ restart_multiport() {
   sleep 1
 
   # Verificação final
-  if ss -lun | grep -Eq ':(3478|7400|7500)'; then
+  if ss -lun | grep -Eq ':(7300|7400|3478)'; then
     echo "✅ Multi-portas reiniciado com sucesso"
   else
     echo "⚠️ Atenção: nenhuma porta ativa após reinício"
