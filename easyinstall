@@ -61,7 +61,6 @@ install -Dm644 badvpn.service /etc/systemd/system/badvpn.service
 # Recarregar systemd
 systemctl daemon-reexec
 systemctl daemon-reload
-systemctl enable badvpn >/dev/null 2>&1
 
 echo "✅ BadVPN instalado / atualizado com sucesso!"
 echo "👉 Menu: sudo /etc/badvpn/badvpn-menu.sh"
