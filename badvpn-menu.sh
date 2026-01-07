@@ -62,7 +62,6 @@ install_badvpn() {
 
 start_badvpn() {
   banner
-  sudo systemctl enable badvpn >/dev/null 2>&1
   sudo systemctl start badvpn >/dev/null 2>&1
   echo "🚀 BadVPN iniciado"
   pause
@@ -71,7 +70,6 @@ start_badvpn() {
 stop_badvpn() {
   banner
   sudo systemctl stop badvpn >/dev/null 2>&1
-  sudo systemctl disable badvpn >/dev/null 2>&1
   echo "🛑 BadVPN parado"
   pause
 }
@@ -456,17 +454,15 @@ restart_multiport() {
 while true; do
   banner
   echo " 01) Instalar BadVPN"
-  echo " 02) Remover BadVPN"
+  echo " 02) Remover"
+  echo " 03) Reiniciar"
   echo "======================================="
-  echo " 03) Abrir Porta: 7300"
-  echo " 04) Reiniciar"
+  echo " 04) Abrir Multi Portas"
+  echo " 05) Reiniciar"
+  echo " 06) Remover"
   echo "======================================="
-  echo " 05) Abrir Multi Portas"
-  echo " 06) Reiniciar"
-  echo " 07) Remover"
-  echo "======================================="
-  echo " 08) Otimizar BadVPN [BETA]"
-  echo " 09) Remover otimizações"
+  echo " 07) Otimizar BadVPN [BETA]"
+  echo " 08) Remover otimizações"
   echo "======================================="
   echo " 00) Voltar"
   echo ""
@@ -475,13 +471,12 @@ while true; do
   case "$opt" in
     01 | 1) install_badvpn ;;
     02 | 2) uninstall_badvpn ;;
-    03 | 3) start_badvpn ;;
-    04 | 4) restart_badvpn ;;
-    05 | 5) setup_multiport ;;
-    06 | 6) restart_multiport ;;
-    07 | 7) remove_multiport ;;
-    08 | 8) optimize_badvpn ;;
-    09 | 9) remove_optimizations ;;
+    03 | 3) restart_badvpn ;;
+    04 | 4) setup_multiport ;;
+    05 | 5) restart_multiport ;;
+    06 | 6) remove_multiport ;;
+    07 | 7) optimize_badvpn ;;
+    08 | 8) remove_optimizations ;;
     00 | 0) clear; bash <(curl -sL https://raw.githubusercontent.com/DTunnel0/CheckUser-Go/master/ottmenu); exit ;;
     *) echo "Opção inválida"; sleep 1 ;;
   esac
