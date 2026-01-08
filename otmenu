@@ -71,15 +71,22 @@ limiter () {
   bash <(curl -sL https://raw.githubusercontent.com/yzeusy/BadVPN/refs/heads/main/limiter.sh)
 }
 
+dragon () {
+  banner
+  bash <(wget -qO- https://git.dr2.site/penguinehis/DragonCoreSSH-Beta/raw/branch/main/install.sh)
+}
+
 while true; do
   banner
   echo " 01) Otimizar Servidor"
   echo "======================================="
   echo " 02) Gerenciar BadVPN"
   echo "======================================="
-  echo " 03) CheckUser DTunnel"
+  echo " 03) CheckUser"
   echo "======================================="
   echo " 04) Gerenciar Limiter"
+  echo "======================================="
+  echo " 05) Script DragonSSH"
   echo "======================================="
   echo " 00) Sair"
   echo ""
@@ -90,6 +97,7 @@ while true; do
     02 | 2) badvpn ;;
     03 | 3) checkuser ;;
     04 | 4) limiter ;;
+    05 | 5) dragon ;;
     00 | 0) clear; exit 0 ;;
     *) echo "Opção inválida"; sleep 1 ;;
   esac
