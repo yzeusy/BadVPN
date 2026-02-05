@@ -41,19 +41,19 @@ clear
 fi
 
 if [[ "$opcao" == "1" ]]; then
-  add_sysctl "net.core.default_qdisc=fq"
-  add_sysctl "net.ipv4.tcp_congestion_control=bbr"
-  add_sysctl "net.core.netdev_max_backlog=50000"
-  add_sysctl "net.core.rmem_max=67108864"
-  add_sysctl "net.core.wmem_max=67108864"
-  add_sysctl "net.ipv4.tcp_rmem=4096 87380 67108864"
-  add_sysctl "net.ipv4.tcp_wmem=4096 65536 67108864"
-  add_sysctl "net.ipv4.tcp_fin_timeout=15"
-  add_sysctl "net.ipv4.tcp_keepalive_time=600"
-  add_sysctl "net.ipv4.tcp_window_scaling=1"
-  add_sysctl "net.ipv4.tcp_low_latency=1"
-  add_sysctl "net.ipv6.conf.all.disable_ipv6=1"
-  add_sysctl "net.ipv6.conf.default.disable_ipv6=1"
+  echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
+  echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
+  echo "net.core.netdev_max_backlog=50000" >> /etc/sysctl.conf
+  echo "net.core.rmem_max=67108864" >> /etc/sysctl.conf
+  echo "net.core.wmem_max=67108864" >> /etc/sysctl.conf
+  echo "net.ipv4.tcp_rmem=4096 87380 67108864" >> /etc/sysctl.conf
+  echo "net.ipv4.tcp_wmem=4096 65536 67108864" >> /etc/sysctl.conf
+  echo "net.ipv4.tcp_fin_timeout=15" >> /etc/sysctl.conf
+  echo "net.ipv4.tcp_keepalive_time=600" >> /etc/sysctl.conf
+  echo "net.ipv4.tcp_window_scaling=1" >> /etc/sysctl.conf
+  echo "net.ipv4.tcp_low_latency=1" >> /etc/sysctl.conf
+  echo "net.ipv6.conf.all.disable_ipv6=1" >> /etc/sysctl.conf
+  echo "net.ipv6.conf.default.disable_ipv6=1" >> /etc/sysctl.conf
   grep -q "1.1.1.1 8.8.8.8" /etc/systemd/resolved.conf || \
   sed -i 's/^#DNS=.*/DNS=1.1.1.1 8.8.8.8/' /etc/systemd/resolved.conf
   grep -q "9.9.9.9" /etc/systemd/resolved.conf || \
