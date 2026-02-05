@@ -125,14 +125,13 @@ vpss () {
   formatar () {
     banner2
     bash <(wget -qO- https://raw.githubusercontent.com/nandoslayer/vps-reinstaller/main/install.sh)
-    reboot
   }
-  
+
   senha () {
     banner2
     bash <(wget -qO- sshplus.xyz/utilitarios/senharoot.sh)
   }
-
+  
   voltar () {
     banner
     bash <(curl -sL https://raw.githubusercontent.com/yzeusy/BadVPN/refs/heads/main/otmenu)
@@ -141,7 +140,8 @@ vpss () {
   while true; do
     banner2
     echo "Obs: Aguarde 10 min para entrar no vps." 
-    echo "A senha padrão após a reinstalação é: LeitboGi0ro"
+    echo "A senha padrão após a reinstalação"
+    echo " é: LeitboGi0ro"
     echo "======================================="
     echo " 01) Reinstalar VPS"
     echo "======================================="
@@ -152,8 +152,8 @@ vpss () {
     read -p "Escolha uma opção: " opt
 
     case "$opt" in
-      01 | 1) otimizacao ;;
-      02 | 2) badvpn ;;
+      01 | 1) formatar ; reboot ;;
+      02 | 2) senha ;;
       00 | 0) clear; voltar ;;
       *) echo "Opção inválida"; sleep 1 ;;
     esac
