@@ -74,6 +74,90 @@ limiter () {
 dragon () {
   banner
   bash <(wget -qO- https://git.dr2.site/penguinehis/DragonCoreSSH-Beta/raw/branch/main/install.sh)
+  menu
+}
+
+vpss () {
+  banner
+  banner2() {
+  clear
+  GREEN="\e[32m"
+  RED="\e[31m"
+  NC="\e[0m"
+
+  get_active_ports() {
+  local ports=""
+
+  # MULTI-PORTAS EXISTE
+  if [[ -f /etc/systemd/system/badvpn@.service ]]; then
+
+    # 1️⃣ Tentar pegar portas ATIVAS
+    ports=$(systemctl list-units --type=service --state=running \
+      | awk '/badvpn@[0-9]+\.service/ {
+          gsub(/.*@|\.service/, "", $1); print $1
+        }' | sort -n | tr '\n' ' ')
+
+    # 2️⃣ Se não houver portas ativas, pegar portas CONFIGURADAS
+    if [[ -z "$ports" ]]; then
+      ports=$(systemctl cat badvpn 2>/dev/null \
+        | awk '/Requires=badvpn@[0-9]+\.service/ {
+            gsub(/.*@|\.service/, "", $0); print $0
+          }' | sort -n | tr '\n' ' ')
+    fi
+
+  else
+    # PORTA ÚNICA (ativa ou parada)
+    ports=$(systemctl cat badvpn 2>/dev/null \
+      | grep -- '--listen-addr' \
+      | sed -n 's/.*:\([0-9]\+\).*/\1/p')
+  fi
+
+  if [[ -n "$ports" ]]; then
+    echo -e "Status: ${GREEN}ATIVO | Portas: $ports ${NC}"
+  else
+    echo -e "Status: ${RED}PARADO${NC}"
+  fi
+}
+  echo "======================================="
+  echo "            Gerenciar VPS              "
+  echo "======================================="
+}
+  formatar () {
+    banner2
+    bash <(wget -qO- https://raw.githubusercontent.com/nandoslayer/vps-reinstaller/main/install.sh)
+    reboot
+  }
+  
+  senha () {
+    banner2
+    bash <(wget -qO- sshplus.xyz/utilitarios/senharoot.sh)
+  }
+
+  voltar () {
+    banner
+    bash <(curl -sL https://raw.githubusercontent.com/yzeusy/BadVPN/refs/heads/main/otmenu)
+  }
+
+  while true; do
+    banner2
+    echo "Obs: Aguarde 10 min para entrar no vps." 
+    echo "A senha padrão após a reinstalação é: LeitboGi0ro"
+    echo "======================================="
+    echo " 01) Reinstalar VPS"
+    echo "======================================="
+    echo " 02) Alterar Senha 'root'"
+    echo "======================================="
+    echo " 00) Voltar"
+    echo ""
+    read -p "Escolha uma opção: " opt
+
+    case "$opt" in
+      01 | 1) otimizacao ;;
+      02 | 2) badvpn ;;
+      00 | 0) clear; voltar ;;
+      *) echo "Opção inválida"; sleep 1 ;;
+    esac
+  done
 }
 
 while true; do
@@ -88,6 +172,8 @@ while true; do
   echo "======================================="
   echo " 05) Script DragonSSH"
   echo "======================================="
+  echo " 06) Gerenciar VPS"
+  echo "======================================="
   echo " 00) Sair"
   echo ""
   read -p "Escolha uma opção: " opt
@@ -98,6 +184,7 @@ while true; do
     03 | 3) checkuser ;;
     04 | 4) limiter ;;
     05 | 5) dragon ;;
+    06 | 6) vpss ;;
     00 | 0) clear; exit 0 ;;
     *) echo "Opção inválida"; sleep 1 ;;
   esac
